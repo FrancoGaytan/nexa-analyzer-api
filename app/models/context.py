@@ -3,11 +3,12 @@ from pydantic import BaseModel
 
 class ClientContext(BaseModel):
     client_name: Optional[str] = None
-    business_overview: str
+    industry: Optional[str] = None
+    location: Optional[str] = None
+    engagement_age: int = 0  # in years
+    business_overview: Optional[str] = None
     objectives: List[str] = []
     company_info: Optional[str] = None
-    technical_requirements: List[str] = []
-    project_timeline: Optional[str] = None
     additional_context_questions: List[str] = []
     potential_future_opportunities: List[str] = []
 
