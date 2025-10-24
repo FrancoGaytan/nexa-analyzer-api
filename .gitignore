@@ -1,0 +1,45 @@
+# Python / FastAPI project ignores
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual environments
+.venv/
+venv/
+ENV/
+
+# Environment & secrets
+.env
+.env.*.local
+
+# Tool caches
+.uv-cache/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# IDE / Editor
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Logs & dumps
+logs/
+*.log
+*.pid
+
+# Build / Dist
+build/
+dist/
+*.egg-info/
+
+# Generated artifacts
+coverage.xml
+pytest-report.html
