@@ -126,6 +126,46 @@ uv run pytest -q
 - [ ] Campos adicionales (riesgos, KPIs, stakeholders, confidences)
 - [ ] Mejora heurísticas (detección timeline, riesgos, métricas)
 
+## Frontend (MVP UI)
+
+Se agregó una carpeta `frontend/` con una Single Page App (Vite + React + Tailwind) mínima para:
+
+- Cargar múltiples archivos (`.txt`, `.pdf`, `.docx`).
+- Validar extensiones soportadas (mismas que backend: ver `SUPPORTED_*_EXT`).
+- Ingresar el nombre del cliente.
+- Enviar el formulario al endpoint `POST /context/analyze` y mostrar el JSON recibido.
+
+### Ejecutar el Frontend
+
+Requisitos: Node 18+ (recomendado), pnpm o npm.
+
+```powershell
+cd frontend
+# Instalar dependencias
+npm install
+
+# Copiar .env.example si se desea cambiar la URL del backend
+Copy-Item .env.example .env  # (opcional)
+
+# Ejecutar en modo dev (abre en http://localhost:5173)
+npm run dev
+```
+
+Si el backend corre en otro puerto/host, ajustar `VITE_API_BASE_URL` en `.env`.
+
+### Build de producción
+
+```powershell
+npm run build
+npm run preview # (sirve para testear el build)
+```
+
+### Notas
+
+- La validación es solo por extensión de archivo (no inspección de contenido) igual que la heurística actual.
+- Se ignoran archivos duplicados por nombre en la sesión de carga.
+- Posibles mejoras futuras: barra de progreso, drag & drop, tamaño máximo, internacionalización, theming.
+
 ## CI
 
 Se incluye workflow de GitHub Actions para correr tests en cada push/PR.
