@@ -181,3 +181,78 @@ Pull requests bienvenidas mientras el alcance siga el roadmap minimal.
 ---
 
 > MVP orientado a acelerar discovery inicial antes de la integración de modelos generativos.
+
+---
+
+## 🚀 Integración AutoGen (Pipeline de Agentes)
+
+Se ha incorporado una arquitectura basada en agentes usando la librería **AutoGen (agentchat + core + ext[openai])** con el modelo `gpt-4o` para transformar materiales de entrada (RFPs, briefs, URLs) en un JSON estructurado listo para ser consumido por otros sistemas o agentes.
+
+### Agentes
+
+| Agente | Responsabilidad | Input | Output |
+|--------|-----------------|-------|--------|
+| Ingestor | Lee archivos (PDF, DOCX, TXT) o URLs y normaliza el texto, agregando metadatos (páginas, anchors). | Ruta de archivo / URL | `{ text_blocks: [...], metadata: {...} }` |
+| Extractor | Convierte bloques de texto + metadatos en el esquema de negocio (`ClientContext`), con evidencias (anchors). | `text_blocks`, `metadata` | JSON parcial con campos + `evidence` |
+| Validator | Valida contra el modelo Pydantic (`ClientContext`), intenta reparar campos faltantes. | JSON extraído | JSON validado / reparado |
+| Researcher (opcional) | Enriquece campos faltantes usando información pública (si está permitido). | JSON validado | JSON enriquecido + `sources` |
+| Coordinator | Orquesta el flujo completo y devuelve el resultado final + log. | Parámetros de request | `{ final_json, log }` |
+
+### Flujo
+
+1. El endpoint `/context/analyze` recibe archivos o texto plano.
+2. `CoordinatorAgent.run_pipeline()` ejecuta secuencialmente:
+   - `IngestorAgent.ingest()` → extracción y normalización.
+   - `ExtractorAgent.extract()` (async) → generación estructurada usando LLM.
+   - `ValidatorAgent.validate()` (async) → verificación / reparación.
+   - `ResearcherAgent.enrich()` (async, condicional) → enriquecimiento externo.
+3. Se construye un `AnalyzeResponse` con los campos del modelo `ClientContext`.
+
+### Async / LLM
+
+- Los métodos de extracción, validación y enriquecimiento son `async` y usan `await agent.run(task=...)` para interactuar con el modelo.
+- La respuesta del LLM se parsea en JSON directo; si el modelo incluye texto adicional, se aplica un fallback regex controlado.
+
+### Archivos Clave
+
+```text
+app/services/agentic/
+  ingestor_agent.py       # Lectura de PDF/DOCX/TXT/URL y normalización
+  extractor_agent.py      # LLM → JSON estructurado + evidencias
+  validator_agent.py      # Validación Pydantic + reparación asistida por LLM
+  researcher_agent.py     # Enriquecimiento público opcional
+  coordinator_agent.py    # Orquestación del pipeline async
+```
+
+### Ejemplo Simplificado de Uso Interno
+
+```python
+from app.services.agentic.coordinator_agent import CoordinatorAgent
+
+coordinator = CoordinatorAgent()
+result = await coordinator.run_pipeline(file_path="./samples/brief.txt", enrich_allowed=False)
+print(result["final_json"])
+```
+
+### Variables de Entorno
+
+Asegúrate de definir `OPENAI_API_KEY` en `.env` y cargarlo temprano en `app/main.py`:
+
+```python
+from dotenv import load_dotenv
+load_dotenv()
+```
+
+### Manejo de Errores
+
+- Si el LLM no produce JSON válido: se retorna `{ "error": ..., "raw_response": ... }` en la etapa correspondiente.
+- Validaciones fallidas: el `ValidatorAgent` intenta reparación; si no es posible, conserva campos vacíos.
+- Enriquecimiento deshabilitado: `ResearcherAgent` devuelve `{ "error": "Enrichment not allowed." }` y el pipeline continúa.
+
+
+### Estado Actual
+
+- Pipeline funcional MVP.
+- Falta: tests específicos para cada agente y mocks de LLM. Eliminar metodos deprecados
+
+---
