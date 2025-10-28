@@ -8,9 +8,9 @@ from autogen_ext.models.openai import OpenAIChatCompletionClient
 class ExtractorAgent:
     def __init__(self, name="extractor", api_key: str = None, system_message: str = None):
         if api_key is None:
-            api_key = os.environ.get("API_KEY")
+            api_key = os.environ.get("OPENAI_API_KEY")
         if not api_key:
-            raise ValueError("API_KEY must be set in environment or passed explicitly.")
+            raise ValueError("OPENAI_API_KEY must be set in environment or passed explicitly.")
 
         if system_message is None:
             system_message = (
@@ -26,7 +26,7 @@ class ExtractorAgent:
             model_client=self.model_client,
             system_message=system_message,
         )
-    def extract(self, text_blocks, metadata, schema=None):
+    async def extract(self, text_blocks, metadata, schema=None):
         """
         Extracts structured JSON from text_blocks and metadata using GPT-4o, matching the ClientContext schema.
         Args:
@@ -49,7 +49,6 @@ class ExtractorAgent:
                 "potential_future_opportunities": ["string"]
             }'''
 
-        # Compose prompt for GPT-4o
         prompt = (
             "You are an expert information extractor. Given the following text blocks and metadata, extract the required fields for the business context JSON schema. "
             "For each field, provide the value and an evidence pointer (anchor) from the text_blocks. "
@@ -60,15 +59,17 @@ class ExtractorAgent:
             "Return a JSON object matching the schema, and for each field, include an 'evidence' key with the anchor or note."
         )
 
-        # Use the agent to get a response
-        response = self.agent.generate_reply(messages=[{"role": "user", "content": prompt}])
-        # Try to extract JSON from the response
+        # ✅ Run the agent (async) and get the final message
+        result = await self.agent.run(task=prompt)
+        content = result.messages[-1].content  # final reply content
+
         try:
-            # Find the first JSON object in the response
-            match = re.search(r'{[\s\S]+}', response)
-            if match:
-                return json.loads(match.group(0))
-            else:
-                raise ValueError("No JSON object found in response.")
+            return json.loads(content)
         except Exception as e:
-            return {"error": str(e), "raw_response": response}
+            m = re.search(r'\{[\s\S]*\}', content)
+            if m:
+                try:
+                    return json.loads(m.group(0))
+                except Exception:
+                    pass
+            return {"error": f"Failed to parse JSON: {e}", "raw_response": content}

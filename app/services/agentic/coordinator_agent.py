@@ -1,13 +1,17 @@
 import os
 from autogen_agentchat.agents import AssistantAgent
 from autogen_ext.models.openai import OpenAIChatCompletionClient
+from .ingestor_agent import IngestorAgent
+from .extractor_agent import ExtractorAgent
+from .validator_agent import ValidatorAgent
+from .researcher_agent import ResearcherAgent
 
 class CoordinatorAgent:
     def __init__(self, name="coordinator", api_key: str = None, system_message: str = None):
         if api_key is None:
-            api_key = os.environ.get("API_KEY")
+            api_key = os.environ.get("OPENAI_API_KEY")
         if not api_key:
-            raise ValueError("API_KEY must be set in environment or passed explicitly.")
+            raise ValueError("OPENAI_API_KEY must be set in environment or passed explicitly.")
 
         if system_message is None:
             system_message = (
@@ -22,7 +26,7 @@ class CoordinatorAgent:
             model_client=self.model_client,
             system_message=system_message,
         )
-    def run_pipeline(self, file_path: str = None, url: str = None, enrich_allowed: bool = False):
+    async def run_pipeline(self, file_path: str = None, url: str = None, enrich_allowed: bool = False):
         """
         Orchestrates the workflow: Ingestor → Extractor → Validator → (Researcher, if allowed).
         Args:
@@ -33,11 +37,6 @@ class CoordinatorAgent:
             dict: { 'final_json': ..., 'log': [...] }
         """
         log = []
-        # Import agents
-        from .ingestor_agent import IngestorAgent
-        from .extractor_agent import ExtractorAgent
-        from .validator_agent import ValidatorAgent
-        from .researcher_agent import ResearcherAgent
 
         ingestor = IngestorAgent()
         extractor = ExtractorAgent()
@@ -49,20 +48,20 @@ class CoordinatorAgent:
         ingest_result = ingestor.ingest(file_path=file_path, url=url)
         log.append({"ingest_result": ingest_result["metadata"]})
 
-        # Step 2: Extract
+        # Step 2: Extract (async)
         log.append("Extracting structured JSON...")
-        extract_result = extractor.extract(ingest_result["text_blocks"], ingest_result["metadata"])
+        extract_result = await extractor.extract(ingest_result["text_blocks"], ingest_result["metadata"])
         log.append({"extract_result": extract_result})
 
-        # Step 3: Validate
+        # Step 3: Validate (async)
         log.append("Validating and repairing JSON...")
-        validate_result = validator.validate(extract_result)
+        validate_result = await validator.validate(extract_result)
         log.append({"validate_result": validate_result})
 
-        # Step 4: Research (optional)
+        # Step 4: Research (optional, async)
         if enrich_allowed:
             log.append("Enriching missing/ambiguous fields with public info...")
-            enrich_result = researcher.enrich(validate_result, allowed=True)
+            enrich_result = await researcher.enrich(validate_result, allowed=True)
             log.append({"enrich_result": enrich_result})
             final_json = enrich_result
         else:

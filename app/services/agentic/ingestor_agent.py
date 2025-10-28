@@ -1,5 +1,3 @@
-
-
 import os
 import pdfplumber
 from docx import Document
@@ -10,9 +8,9 @@ from autogen_ext.models.openai import OpenAIChatCompletionClient
 class IngestorAgent:
     def __init__(self, name="ingestor", api_key: str = None, system_message: str = None):
         if api_key is None:
-            api_key = os.environ.get("API_KEY")
+            api_key = os.environ.get("OPENAI_API_KEY")
         if not api_key:
-            raise ValueError("API_KEY must be set in environment or passed explicitly.")
+            raise ValueError("OPENAI_API_KEY must be set in environment or passed explicitly.")
 
         if system_message is None:
             system_message = (

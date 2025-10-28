@@ -1,18 +1,23 @@
 
+import os
 import json
 import re
 from autogen_agentchat.agents import AssistantAgent
 from autogen_ext.models.openai import OpenAIChatCompletionClient
 
 class ResearcherAgent:
-    def __init__(self, name="researcher", system_message="Enriches missing/ambiguous fields using public info."):
-        self.model_client = OpenAIChatCompletionClient(model="gpt-4o")
+    def __init__(self, name="researcher", api_key: str = None, system_message="Enriches missing/ambiguous fields using public info."):
+        if api_key is None:
+            api_key = os.environ.get("OPENAI_API_KEY")
+        if not api_key:
+            raise ValueError("OPENAI_API_KEY must be set in environment or passed explicitly.")
+        self.model_client = OpenAIChatCompletionClient(model="gpt-4o", api_key=api_key)
         self.agent = AssistantAgent(
             name=name,
             model_client=self.model_client,
             system_message=system_message,
         )
-    def enrich(self, data: dict, allowed: bool = False):
+    async def enrich(self, data: dict, allowed: bool = True):
         """
         Enriches missing/ambiguous fields in the JSON object using public information, only if allowed.
         Args:
@@ -31,12 +36,15 @@ class ResearcherAgent:
             f"JSON: {data}\n"
             "Return only the enriched JSON object, with a 'sources' key for each enriched field."
         )
-        response = self.agent.generate_reply(messages=[{"role": "user", "content": prompt}])
+        result = await self.agent.run(task=prompt)
+        content = result.messages[-1].content
         try:
-            match = re.search(r'{[\s\S]+}', response)
-            if match:
-                return json.loads(match.group(0))
-            else:
-                raise ValueError("No JSON object found in response.")
+            return json.loads(content)
         except Exception as e:
-            return {"error": str(e), "raw_response": response}
+            m = re.search(r'\{[\s\S]*\}', content)
+            if m:
+                try:
+                    return json.loads(m.group(0))
+                except Exception:
+                    pass
+            return {"error": f"Failed to parse JSON: {e}", "raw_response": content}
