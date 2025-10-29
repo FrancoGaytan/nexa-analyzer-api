@@ -1,12 +1,7 @@
 import React, { useState } from 'react';
 import { FileUpload } from '../components/FileUpload';
 import { AnalysisResult } from '../components/AnalysisResult';
-
-export interface AnalyzeResponse {
-  analysis_id: string;
-  status: string;
-  summary: any;
-}
+import type { AnalyzeResponse } from '../types/context';
 
 export const App: React.FC = () => {
   const [result, setResult] = useState<AnalyzeResponse | null>(null);
@@ -18,7 +13,7 @@ export const App: React.FC = () => {
         <p className="text-sm text-white">Subí tus briefs / RFPs para extraer contexto</p>
       </header>
       <main className="flex-1 p-6 max-w-4xl w-full mx-auto">
-        <FileUpload onAnalyzed={setResult} />
+  <FileUpload onAnalyzed={setResult} />
         <div className="mt-8">
           <AnalysisResult result={result} />
         </div>

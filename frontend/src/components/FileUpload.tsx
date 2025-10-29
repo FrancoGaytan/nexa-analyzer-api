@@ -1,5 +1,5 @@
 import React, { useCallback, useRef, useState } from 'react';
-import type { AnalyzeResponse } from '../pages/App';
+import type { AnalyzeResponse } from '../types/context';
 
 const SUPPORTED_EXT = ['txt', 'text', 'pdf', 'docx'];
 
@@ -16,6 +16,7 @@ interface LocalFile {
 export const FileUpload: React.FC<Props> = ({ onAnalyzed }) => {
   const [clientName, setClientName] = useState('');
   const [files, setFiles] = useState<LocalFile[]>([]);
+  const [enrichAllowed, setEnrichAllowed] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement | null>(null);
@@ -54,6 +55,7 @@ export const FileUpload: React.FC<Props> = ({ onAnalyzed }) => {
       const form = new FormData();
       form.append('client_name', clientName.trim());
       files.forEach(f => form.append('files', f.file));
+      form.append('enrich_allowed', enrichAllowed ? 'true' : 'false');
       const base = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
       const resp = await fetch(`${base}/context/analyze`, {
         method: 'POST',
@@ -62,7 +64,11 @@ export const FileUpload: React.FC<Props> = ({ onAnalyzed }) => {
       if (!resp.ok) {
         throw new Error(`HTTP ${resp.status}`);
       }
-      const data: AnalyzeResponse = await resp.json();
+      const raw = await resp.json();
+      if (!raw.summary) {
+        throw new Error(raw.detail || 'Respuesta inesperada del backend');
+      }
+      const data: AnalyzeResponse = raw as AnalyzeResponse;
       onAnalyzed(data);
     } catch (e) {
       const msg = e instanceof Error ? e.message : 'Error al enviar';
@@ -88,6 +94,16 @@ export const FileUpload: React.FC<Props> = ({ onAnalyzed }) => {
             placeholder="ACME Corp"
             autoComplete="off"
           />
+        </div>
+        <div className="flex items-center gap-2 pt-1">
+          <input
+            id="enrich_allowed"
+            type="checkbox"
+            checked={enrichAllowed}
+            onChange={e => setEnrichAllowed(e.target.checked)}
+            className="h-4 w-4 rounded border-gray-300 text-brand focus:ring-brand"
+          />
+          <label htmlFor="enrich_allowed" className="text-sm select-none">Permitir enriquecimiento público (puede usar fuentes externas)</label>
         </div>
         <div>
           <label className="block text-sm font-medium mb-1">Archivos (.txt, .pdf, .docx)</label>
