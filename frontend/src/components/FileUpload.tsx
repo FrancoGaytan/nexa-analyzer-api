@@ -14,7 +14,6 @@ interface LocalFile {
 }
 
 export const FileUpload: React.FC<Props> = ({ onAnalyzed }) => {
-  const [clientName, setClientName] = useState('');
   const [files, setFiles] = useState<LocalFile[]>([]);
   const [enrichAllowed, setEnrichAllowed] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -45,7 +44,7 @@ export const FileUpload: React.FC<Props> = ({ onAnalyzed }) => {
 
   const removeFile = (id: string) => setFiles(prev => prev.filter(f => f.id !== id));
 
-  const canSubmit = clientName.trim().length > 0 && files.length > 0 && files.every(f => !f.error) && !submitting;
+  const canSubmit = files.length > 0 && files.every(f => !f.error) && !submitting;
 
   const handleSubmit = async () => {
     if (!canSubmit) return;
@@ -53,7 +52,6 @@ export const FileUpload: React.FC<Props> = ({ onAnalyzed }) => {
     setError(null);
     try {
       const form = new FormData();
-      form.append('client_name', clientName.trim());
       files.forEach(f => form.append('files', f.file));
       form.append('enrich_allowed', enrichAllowed ? 'true' : 'false');
       const base = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
@@ -83,18 +81,6 @@ export const FileUpload: React.FC<Props> = ({ onAnalyzed }) => {
     <div className="bg-white rounded-lg shadow p-6">
       <h2 className="text-lg font-semibold mb-4">Subir documentos</h2>
       <div className="space-y-4">
-        <div>
-          <label className="block text-sm font-medium mb-1" htmlFor="client_name">Cliente</label>
-          <input
-            id="client_name"
-            type="text"
-            value={clientName}
-            onChange={e => setClientName(e.target.value)}
-            className="w-full rounded border-gray-300 focus:ring-brand focus:border-brand"
-            placeholder="ACME Corp"
-            autoComplete="off"
-          />
-        </div>
         <div className="flex items-center gap-2 pt-1">
           <input
             id="enrich_allowed"
