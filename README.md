@@ -135,7 +135,7 @@ Características:
 
 - Carga múltiples archivos (`.txt`, `.pdf`, `.docx`).
 - Validación de extensiones soportadas.
-- Campo de cliente y flag opcional de enriquecimiento (`enrich_allowed`).
+- Flag opcional de enriquecimiento (`enrich_allowed`).
 - Llamada al endpoint `POST /context/analyze` usando `multipart/form-data`.
 - Render estructurado del resultado (campos nuevos: `industry`, `location`, `engagement_age`, etc.).
 - Vista expandible con el JSON completo.
@@ -149,8 +149,9 @@ cd frontend
 # Instalar dependencias
 npm install
 
-# Copiar .env.example si se desea cambiar la URL del backend
-Copy-Item .env.example .env  # (opcional)
+# (Editar archivo .env si querés cambiar la URL del backend)
+# Ejemplo contenido por defecto:
+# VITE_API_BASE_URL=http://localhost:8000
 
 # Ejecutar en modo dev (abre en http://localhost:5173)
 npm run dev
