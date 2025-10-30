@@ -40,6 +40,20 @@ build/
 dist/
 *.egg-info/
 
+# Frontend (Vite/React)
+frontend/node_modules/
+frontend/dist/
+frontend/.vite/
+frontend/.env
+frontend/.env.local
+frontend/.env.*.local
+frontend/npm-debug.log*
+frontend/yarn-error.log*
+frontend/pnpm-debug.log*
+frontend/.turbo/
+frontend/.cache/
+
+
 # Generated artifacts
 coverage.xml
 pytest-report.html

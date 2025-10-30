@@ -126,6 +126,53 @@ uv run pytest -q
 - [ ] Campos adicionales (riesgos, KPIs, stakeholders, confidences)
 - [ ] Mejora heurísticas (detección timeline, riesgos, métricas)
 
+## Frontend (MVP UI)
+- Más detalles del flujo agentico: ver [AGENTIC_PIPELINE.md](./AGENTIC_PIPELINE.md)
+
+La carpeta `frontend/` contiene una SPA (Vite + React + Tailwind) para interactuar con el pipeline agentico del backend.
+
+Características:
+
+- Carga múltiples archivos (`.txt`, `.pdf`, `.docx`).
+- Validación de extensiones soportadas.
+- Campo de cliente y flag opcional de enriquecimiento (`enrich_allowed`).
+- Llamada al endpoint `POST /context/analyze` usando `multipart/form-data`.
+- Render estructurado del resultado (campos nuevos: `industry`, `location`, `engagement_age`, etc.).
+- Vista expandible con el JSON completo.
+
+### Ejecutar el Frontend
+
+Requisitos: Node 18+ (recomendado), pnpm o npm.
+
+```powershell
+cd frontend
+# Instalar dependencias
+npm install
+
+# Copiar .env.example si se desea cambiar la URL del backend
+Copy-Item .env.example .env  # (opcional)
+
+# Ejecutar en modo dev (abre en http://localhost:5173)
+npm run dev
+```
+
+Si el backend corre en otro puerto/host, ajustar `VITE_API_BASE_URL` en `.env`.
+
+### Build de producción
+
+```powershell
+npm run build
+npm run preview # (sirve para testear el build)
+```
+
+### Notas
+
+- El backend ahora usa agentes (Ingestor → Extractor → Validator → Researcher opcional) con OpenAI GPT-4o.
+- Si se marca "Permitir enriquecimiento" se ejecuta el ResearcherAgent y puede demorar más.
+- La respuesta mínima incluye `analysis_id`, `status` y `summary` (ClientContext).
+- Se ignoran archivos duplicados por nombre en la sesión de carga.
+- Posibles mejoras futuras: barra de progreso, drag & drop, límites de tamaño, internacionalización, theming, pooling de estados si se hace async largo.
+
 ## CI
 
 Se incluye workflow de GitHub Actions para correr tests en cada push/PR.
