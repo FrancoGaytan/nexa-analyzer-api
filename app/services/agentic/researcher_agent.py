@@ -34,6 +34,13 @@ class ResearcherAgent:
             "For each field you enrich, provide a source reference (URL or citation). Do not fabricate information. "
             "If you cannot find reliable public information, leave the field empty and add a note explaining why.\n"
             f"JSON: {data}\n"
+            "Industry refers to the primary sector in which the client operates (e.g., Healthcare, Finance, Technology).\n"
+            "Location refers to the primary geographic location of the client (e.g., city, country).\n"
+            "Business Overview is a brief summary of the client's business operations and goals. Try to be complete and thorough.\n"
+            "Objectives are the main goals the client aims to achieve through their partnership with Endava. Try to be complete, specific and detailed.\n"
+            "Company Info includes relevant details about the client's size, market position, and key offerings. Try to be complete and thorough.\n"
+            "Additional Context Questions are any questions that arise from the provided materials that need clarification from the client.\n"
+            "Potential Future Opportunities are possible areas for growth or collaboration that could be explored in the future.\n"
             "Return only the enriched JSON object, with a 'sources' key for each enriched field."
         )
         result = await self.agent.run(task=prompt)
