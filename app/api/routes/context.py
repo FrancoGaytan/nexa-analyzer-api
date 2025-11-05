@@ -49,7 +49,7 @@ async def analyze(
 # Helper to convert pipeline output to AnalyzeResponse
 def _to_analyze_response(result, client_name):
     final = result.get("final_json", {})
-    ctx = ClientContext(**{k: final.get(k) for k in ClientContext.__fields__})
+    ctx = ClientContext(**{k: final.get(k) for k in ClientContext.model_fields})
     return AnalyzeResponse(
         analysis_id="autogen-pipeline",
         status="completed" if final else "error",
