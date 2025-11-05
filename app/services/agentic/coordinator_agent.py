@@ -26,7 +26,7 @@ class CoordinatorAgent:
             model_client=self.model_client,
             system_message=system_message,
         )
-    async def run_pipeline(self, file_path: str = None, url: str = None, enrich_allowed: bool = False):
+    async def run_pipeline(self, file_path: str = None, file_paths: list = None, url: str = None, enrich_allowed: bool = False):
         """
         Orchestrates the workflow: Ingestor → Extractor → Validator → (Researcher, if allowed).
         Args:
@@ -45,7 +45,17 @@ class CoordinatorAgent:
 
         # Step 1: Ingest
         log.append("Ingesting input...")
-        ingest_result = ingestor.ingest(file_path=file_path, url=url)
+        if file_paths:
+            # Ingest all files and merge their text_blocks and metadata
+            all_blocks = []
+            all_metadata = {"files": []}
+            for fp in file_paths:
+                result = ingestor.ingest(file_path=fp)
+                all_blocks.extend(result["text_blocks"])
+                all_metadata["files"].append(result["metadata"])
+            ingest_result = {"text_blocks": all_blocks, "metadata": all_metadata}
+        else:
+            ingest_result = ingestor.ingest(file_path=file_path, url=url)
         log.append({"ingest_result": ingest_result["metadata"]})
 
         # Step 2: Extract (async)

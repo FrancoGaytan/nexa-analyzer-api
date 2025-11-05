@@ -14,30 +14,56 @@ interface LocalFile {
 }
 
 export const FileUpload: React.FC<Props> = ({ onAnalyzed }) => {
+  const [progress, setProgress] = useState(0);
   const [files, setFiles] = useState<LocalFile[]>([]);
   const [enrichAllowed, setEnrichAllowed] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement | null>(null);
+  // Simulate progress bar while submitting
+  React.useEffect(() => {
+    let timer: number | null = null;
+    if (submitting) {
+      setProgress(0);
+      timer = window.setInterval(() => {
+        setProgress(prev => {
+          if (prev < 90) return prev + 5;
+          return prev;
+        });
+      }, 300);
+    } else {
+      setProgress(0);
+    }
+    return () => { if (timer) window.clearInterval(timer); };
+  }, [submitting]);
 
   const validateFile = (file: File): string | undefined => {
     const ext = file.name.split('.').pop()?.toLowerCase();
     if (!ext || !SUPPORTED_EXT.includes(ext)) {
-      return `Formato no soportado: .${ext || '???'}`;
+      return `Unsupported format: .${ext || '???'}`;
     }
     return undefined;
   };
 
   const onSelect = useCallback((evt: React.ChangeEvent<HTMLInputElement>) => {
+    if (error && error.includes('You can upload up to 5 files only')) {
+      setError(null);
+    }
     const list = evt.target.files;
     if (!list) return;
     const newOnes: LocalFile[] = [];
     const existingNames = new Set(files.map(f => f.file.name));
     Array.from(list).forEach(file => {
-      if (existingNames.has(file.name)) return; // evitar duplicados por nombre
+      if (existingNames.has(file.name)) return;
       const error = validateFile(file);
       newOnes.push({ id: crypto.randomUUID(), file, error });
     });
+    const totalFiles = files.length + newOnes.length;
+    if (totalFiles > 5) {
+      setError('You can upload up to 5 files only');
+      if (inputRef.current) inputRef.current.value = '';
+      return;
+    }
     setFiles(prev => [...prev, ...newOnes]);
     if (inputRef.current) inputRef.current.value = '';
   }, [files]);
@@ -51,6 +77,11 @@ export const FileUpload: React.FC<Props> = ({ onAnalyzed }) => {
     setSubmitting(true);
     setError(null);
     try {
+      if (files.length > 5) {
+        setError('You can upload up to 5 files only');
+        setSubmitting(false);
+        return;
+      }
       const form = new FormData();
       files.forEach(f => form.append('files', f.file));
       form.append('enrich_allowed', enrichAllowed ? 'true' : 'false');
@@ -60,16 +91,26 @@ export const FileUpload: React.FC<Props> = ({ onAnalyzed }) => {
         body: form,
       });
       if (!resp.ok) {
-        throw new Error(`HTTP ${resp.status}`);
+        let errorMsg = `HTTP ${resp.status}`;
+        try {
+          const raw = await resp.json();
+          if (raw.detail && raw.detail.includes('up to 5 files')) {
+            errorMsg = raw.detail;
+          }
+        } catch {}
+        throw new Error(errorMsg);
       }
       const raw = await resp.json();
       if (!raw.summary) {
-        throw new Error(raw.detail || 'Respuesta inesperada del backend');
+        throw new Error(raw.detail || 'Unexpected backend response');
       }
       const data: AnalyzeResponse = raw as AnalyzeResponse;
       onAnalyzed(data);
     } catch (e) {
-      const msg = e instanceof Error ? e.message : 'Error al enviar';
+      let msg = e instanceof Error ? e.message : 'Error sending request';
+      if (msg.includes('Failed to fetch') && files.length > 5) {
+        msg += ' (You can upload up to 5 files only)';
+      }
       setError(msg);
       onAnalyzed(null);
     } finally {
@@ -78,9 +119,20 @@ export const FileUpload: React.FC<Props> = ({ onAnalyzed }) => {
   };
 
   return (
-    <div className="bg-white rounded-lg shadow p-6">
-      <h2 className="text-lg font-semibold mb-4">Subir documentos</h2>
+  <div className="bg-white rounded-lg shadow p-6">
+  <h2 className="text-lg font-semibold mb-4">Upload documents</h2>
       <div className="space-y-4">
+        {submitting && (
+          <div className="w-full mb-4">
+            <div className="relative h-3 bg-gray-200 rounded-full overflow-hidden">
+              <div
+                className="absolute left-0 top-0 h-full bg-brand transition-all duration-200"
+                style={{ width: `${progress}%` }}
+              />
+            </div>
+            <div className="text-xs text-brand mt-1 text-right">{progress}%</div>
+          </div>
+        )}
         <div className="flex items-center gap-2 pt-1">
           <input
             id="enrich_allowed"
@@ -89,19 +141,22 @@ export const FileUpload: React.FC<Props> = ({ onAnalyzed }) => {
             onChange={e => setEnrichAllowed(e.target.checked)}
             className="h-4 w-4 rounded border-gray-300 text-brand focus:ring-brand"
           />
-          <label htmlFor="enrich_allowed" className="text-sm select-none">Permitir enriquecimiento público (puede usar fuentes externas)</label>
+          <label htmlFor="enrich_allowed" className="text-sm select-none">Allow public enrichment (may use external sources)</label>
         </div>
         <div>
-          <label className="block text-sm font-medium mb-1">Archivos (.txt, .pdf, .docx)</label>
+          <label className="block text-sm font-medium mb-1">Files (.txt, .pdf, .docx)</label>
           <input
             ref={inputRef}
             type="file"
             multiple
+            onClick={() => {
+              if (error && error.includes('You can upload up to 5 files only')) setError(null);
+            }}
             onChange={onSelect}
             className="block w-full text-sm text-gray-600"
             accept={SUPPORTED_EXT.map(e => '.' + e).join(',')}
           />
-          <p className="text-xs text-gray-500 mt-1">Se ignoran duplicados por nombre</p>
+          <p className="text-xs text-gray-500 mt-1">Duplicates by name are ignored</p>
         </div>
         {files.length > 0 && (
           <ul className="divide-y rounded border border-gray-200 bg-gray-50 text-sm">
@@ -112,7 +167,7 @@ export const FileUpload: React.FC<Props> = ({ onAnalyzed }) => {
                   onClick={() => removeFile(f.id)}
                   className="text-xs text-gray-500 hover:text-gray-800"
                   type="button"
-                >Quitar</button>
+                >Remove</button>
               </li>
             ))}
           </ul>
@@ -123,7 +178,7 @@ export const FileUpload: React.FC<Props> = ({ onAnalyzed }) => {
             onClick={handleSubmit}
             className="inline-flex items-center rounded bg-brand px-4 py-2 text-white disabled:opacity-50 disabled:cursor-not-allowed hover:bg-brand-dark transition"
             type="button"
-          >{submitting ? 'Enviando...' : 'Analizar'}</button>
+          >{submitting ? 'Sending...' : 'Analyze'}</button>
           {error && <span className="text-sm text-red-600">{error}</span>}
         </div>
       </div>

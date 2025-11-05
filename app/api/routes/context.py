@@ -18,14 +18,16 @@ async def analyze(
     coordinator = CoordinatorAgent()
     # If files are uploaded, save to temp and run pipeline
     if files:
+        if len(files) > 5:
+            return {"detail": "You can upload up to 5 files only."}
         temp_paths = []
         for f in files:
             suffix = os.path.splitext(f.filename)[1]
             with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as tmp:
                 tmp.write(await f.read())
                 temp_paths.append(tmp.name)
-        # Only process the first file for now (can be extended)
-        result = await coordinator.run_pipeline(file_path=temp_paths[0], enrich_allowed=enrich_allowed)
+        # Process all files together
+        result = await coordinator.run_pipeline(file_paths=temp_paths, enrich_allowed=enrich_allowed)
         # Clean up temp files
         for path in temp_paths:
             os.remove(path)
@@ -47,7 +49,7 @@ async def analyze(
 # Helper to convert pipeline output to AnalyzeResponse
 def _to_analyze_response(result, client_name):
     final = result.get("final_json", {})
-    ctx = ClientContext(**{k: final.get(k) for k in ClientContext.__fields__})
+    ctx = ClientContext(**{k: final.get(k) for k in ClientContext.model_fields})
     return AnalyzeResponse(
         analysis_id="autogen-pipeline",
         status="completed" if final else "error",
