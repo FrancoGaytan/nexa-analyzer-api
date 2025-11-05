@@ -14,11 +14,28 @@ interface LocalFile {
 }
 
 export const FileUpload: React.FC<Props> = ({ onAnalyzed }) => {
+  const [progress, setProgress] = useState(0);
   const [files, setFiles] = useState<LocalFile[]>([]);
   const [enrichAllowed, setEnrichAllowed] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement | null>(null);
+  // Simulate progress bar while submitting
+  React.useEffect(() => {
+    let timer: number | null = null;
+    if (submitting) {
+      setProgress(0);
+      timer = window.setInterval(() => {
+        setProgress(prev => {
+          if (prev < 90) return prev + 5;
+          return prev;
+        });
+      }, 300);
+    } else {
+      setProgress(0);
+    }
+    return () => { if (timer) window.clearInterval(timer); };
+  }, [submitting]);
 
   const validateFile = (file: File): string | undefined => {
     const ext = file.name.split('.').pop()?.toLowerCase();
@@ -78,9 +95,20 @@ export const FileUpload: React.FC<Props> = ({ onAnalyzed }) => {
   };
 
   return (
-    <div className="bg-white rounded-lg shadow p-6">
+  <div className="bg-white rounded-lg shadow p-6">
       <h2 className="text-lg font-semibold mb-4">Subir documentos</h2>
       <div className="space-y-4">
+        {submitting && (
+          <div className="w-full mb-4">
+            <div className="relative h-3 bg-gray-200 rounded-full overflow-hidden">
+              <div
+                className="absolute left-0 top-0 h-full bg-brand transition-all duration-200"
+                style={{ width: `${progress}%` }}
+              />
+            </div>
+            <div className="text-xs text-brand mt-1 text-right">{progress}%</div>
+          </div>
+        )}
         <div className="flex items-center gap-2 pt-1">
           <input
             id="enrich_allowed"
